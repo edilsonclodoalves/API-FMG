@@ -504,7 +504,7 @@ class FortiManager:
             name, subnet=["0.0.0.0", "255.255.255.255"])
         payload = {
             "method": "add",
-            "params": [{"url": f"pm/config/adom/root/obj/firewall/address/{name}/dynamic_mapping",
+            "params": [{"url": f"pm/config/adom/{self.adom}/obj/firewall/address/{name}/dynamic_mapping",
                         "data": [{"_scope": [{"name": f"{device}", "vdom": "root"}],
                                   "subnet": subnet,
                                   "comment": f"{comment}",
@@ -514,57 +514,32 @@ class FortiManager:
             url=self.base_url, json=payload, verify=self.verify)
         return [add_obj, add_dynamic_obj.json()["result"]]
 
-    def update_dynamic_object(self, name, device, subnet: list, comment=None):
+    def update_dynamic_object(self, name, device, subnet: list, do="add", comment=None):
         """
-        Add a new dynamic mapping to an existing address object.
+        Update the per mapping settings of the address object.
         :param name: name of the object that needs to be updated.
-        :param device: name of the device that needs to be added.
-        :param subnet: subnet of the device that needs to be mapped.
+        :param device: name of the device that needs to be added/updated
+        :param subnet: updated subnet of the device that needs to be mapped
+        :param do: if parameter do is set to "add" it will update it. If it is set to "remove" it will be deleted.
         :param comment: add comment if you want.
         :return: return result of the request from FortiManager.
         """
-        
-        # 1. Recuperar o objeto atual
-        objects = self.get_firewall_address_objects()
-        current_object = next((obj for obj in objects if obj["name"] == name), None)
-        if not current_object:
-            raise ValueError(f"Object {name} not found.")
-        
-        dynamic_mapping_data = {
-            "_scope": [{"name": device, "vdom": "root"}],
-            "subnet": subnet,
-            "type": 0,
-            "obj-type": 9,
-            "allow-routing": 0,
-            "clearpass-spt": 0,
-            "color": 0,
-            "dirty": 1,
-            "fabric-object": 0,
-            "macaddr": [],
-            "node-ip-only": 0,
-            "unset attrs": ["associated-interface"]
-        }
-    
-        if comment:
-            dynamic_mapping_data["comment"] = comment
-    
-        # 2. Adicionar o novo mapeamento dinâmico ao objeto
-        current_object["dynamic_mapping"].append(dynamic_mapping_data)
-    
-        # 3. Enviar o objeto atualizado de volta ao FortiManager
+        session = self.login()
         payload = {
-            "method": "update",
-            "params": [{
-                "url": f"pm/config/adom/root/obj/firewall/address/{name}",
-                "data": current_object
-            }],
-            "session": self.sessionid
-        }
-    
-        response = requests.post(url=self.base_url, json=payload, verify=self.verify)
-        return response.json()["result"]
+            "params": [{"url": f"pm/config/adom/{self.adom}/obj/firewall/address/{name}/dynamic_mapping",
+                        "data": [{"_scope": [{"name": f"{device}", "vdom": "root"}],
+                                  "subnet": subnet,
+                                  "comment": f"{comment}",
+                                  }]}],
+            "session": self.sessionid}
+        if do == "add":
+            payload.update(method="update")
+        elif do == "remove":
+            payload.update(method="delete")
+        update_dynamic_obj = session.post(
+            url=self.base_url, json=payload, verify=self.verify)
+        return update_dynamic_obj.json()["result"]
 
-##
     def update_firewall_address_object(self, name, **data):
         """
         Get the name of the address object and update it with your data
