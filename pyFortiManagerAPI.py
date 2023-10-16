@@ -488,9 +488,9 @@ class FortiManager:
 
         add_address_object = session.post(
             url=self.base_url, json=payload, verify=self.verify)
-        return add_address_object.json()["result"]
+        return add_address_object.json()["result"]   
 
-    def add_dynamic_object(self, name, device, subnet=list, comment=None):
+    def add_dynamic_object(self, name, device, subnet=list, comment=None, revision_name=None):
         """
         Add per device mapping in address object.
         :param name: name of the address object.
@@ -512,6 +512,7 @@ class FortiManager:
             "session": self.sessionid}
         add_dynamic_obj = session.post(
             url=self.base_url, json=payload, verify=self.verify)
+
         return [add_obj, add_dynamic_obj.json()["result"]]
 
     def update_dynamic_object(self, name, device, subnet: list, do="add", comment=None):
